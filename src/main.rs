@@ -1,50 +1,54 @@
 use std::io;
 
 use clap::Parser;
-use rand::*;
 
 pub type Error = Box<dyn std::error::Error>;
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// Print a sample of the lines from stdin (https://en.wikipedia.org/wiki/Reservoir_sampling)
 #[derive(Parser)]
 struct Args {
-    #[clap(default_value_t = false, short, long)]
-    debug: bool,
-    #[clap(default_value_t = 10)]
+    #[clap(default_value_t = 10, short, long = "sample-size")]
     n: usize,
-    // seed: Option<usize>,
+    /// Seed the PRNG with this value for reproducible results
+    #[clap(short, long)]
+    seed: Option<u64>,
 }
-
 #[cfg(unix)]
 fn reset_sigpipe() {
     unsafe {
         libc::signal(libc::SIGPIPE, libc::SIG_DFL);
-        // libc::signal(libc::SIG, libc::SIG_DFL);  TODO sigquit -> dump?
     }
 }
 
 pub fn main() -> Result<()> {
     reset_sigpipe();
-    // rand::
     let args = Args::parse();
-    let mut reservoir: Vec<(usize, String)> = io::stdin()
-        .lines()
-        .take(args.n)
-        .filter_map(std::result::Result::ok)
-        .enumerate()
-        .collect();
-
-    let mut rng = rand::thread_rng();
-    for (i, line) in io::stdin().lines().enumerate() {
-        let i = i + reservoir.len();
-        let j: usize = rng.gen_range(0..i);
-        if j < reservoir.len() {
-            reservoir[j] = (i, line?);
-        }
+    if let Some(seed) = args.seed {
+        fastrand::seed(seed);
     }
+    let mut reservoir = reservoir_sampling_r(args.n)?;
     reservoir.sort_by_key(|x| x.0);
     for item in reservoir {
         println!("{}", item.1);
     }
     Ok(())
+}
+
+fn reservoir_sampling_r(n: usize) -> Result<Vec<(usize, String)>> {
+    let mut reservoir: Vec<(usize, String)> = io::stdin()
+        .lines()
+        .take(n)
+        .filter_map(std::result::Result::ok)
+        .enumerate()
+        .collect();
+
+    let lines = io::stdin().lines().enumerate().map(|(x, y)| (x + n, y));
+    for (i, line) in lines {
+        let j = fastrand::usize(..i);
+        if j < reservoir.len() {
+            reservoir[j] = (i, line?);
+        }
+    }
+    Ok(reservoir)
 }
