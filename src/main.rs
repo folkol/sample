@@ -1,6 +1,4 @@
-use std::{io, io::prelude::*};
-use std::collections::VecDeque;
-use std::io::{BufWriter, StdoutLock};
+use std::io;
 
 use clap::Parser;
 use rand::*;
@@ -42,6 +40,8 @@ pub fn main() -> Result<()> {
             reservoir[j] = line?;
         }
     }
-    dbg!(reservoir);
+    for item in reservoir {
+        println!("{}", item);
+    }
     Ok(())
 }
