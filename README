@@ -1,0 +1,10 @@
+# Sample stdin
+
+Using https://en.wikipedia.org/wiki/Reservoir_sampling to get a sample from
+stdin.
+
+## Install
+
+cargo build -r
+sudo cp target/release/sample /usr/local/bin/
+
